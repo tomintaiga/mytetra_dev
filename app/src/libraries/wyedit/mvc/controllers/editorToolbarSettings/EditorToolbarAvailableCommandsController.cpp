@@ -12,11 +12,12 @@ EditorToolbarAvailableCommandsController::~EditorToolbarAvailableCommandsControl
 
 }
 
+
 // Инициализация представления
 void EditorToolbarAvailableCommandsController::init()
 {
     // Создается вид со списком кнопок для панели всех доступных кнопок
-    view = new EditorToolbarAvailableCommandsView( qobject_cast<QWidget *>(parent()) );
+    view = new EditorToolbarCommandsListView( qobject_cast<QWidget *>(parent()) );
     view->setObjectName("editorToolbarAvailableCommandsView");
 
     // Создание модели данных
@@ -38,17 +39,20 @@ void EditorToolbarAvailableCommandsController::init()
     }
 }
 
+
 // Получение представления
-EditorToolbarAvailableCommandsView *EditorToolbarAvailableCommandsController::getView() const
+EditorToolbarCommandsListView *EditorToolbarAvailableCommandsController::getView() const
 {
     return view;
 }
+
 
 // Получение модели
 EditorToolbarAvailableCommandsModel *EditorToolbarAvailableCommandsController::getModel() const
 {
     return model;
 }
+
 
 // Получение SelectionModel
 QItemSelectionModel *EditorToolbarAvailableCommandsController::getSelectionModel() const

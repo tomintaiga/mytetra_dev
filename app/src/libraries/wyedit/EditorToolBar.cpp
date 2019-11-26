@@ -419,10 +419,11 @@ void EditorToolBar::setupShortcuts(void)
     shortcutManager.initAction("editor-toAttach", toAttach);
 }
 
+
 // Список названий всех контролов (команд) панелей инструментов
 QStringList *EditorToolBar::getCommandNameList()
 {
-    QRegExp nameMask("editor_tb_.*");
+    QRegularExpression nameMask("editor_tb_.*");
     QList<QWidget *> widgetList = this->findChildren<QWidget *>(nameMask);
     QList<QAction *> actionList = this->findChildren<QAction *>(nameMask);
 
@@ -439,11 +440,32 @@ QStringList *EditorToolBar::getCommandNameList()
     return buttonsNameList;
 }
 
+
 QList<QWidget *> EditorToolBar::getButtonWidgetList(void)
 {
-  QRegExp nameMask("editor_tb_.*");
+  QRegularExpression nameMask("editor_tb_.*");
 
   return this->findChildren<QWidget *>(nameMask); // QList<QWidget *> tb_tools_list=qFindChildren(qobject_cast<QObject *>(this),name_mask);
+}
+
+
+// Выяснение иконки для инструмента панели управления по его имени
+QIcon EditorToolBar::getIcon(const QString &name)
+{
+    QRegularExpression nameMask("editor_tb_"+name);
+    QList<QWidget *> widgetList = this->findChildren<QWidget *>(nameMask);
+    QList<QAction *> actionList = this->findChildren<QAction *>(nameMask);
+
+    // Если инструмент является виджетом, то у виджета нет иконки
+    if (widgetList.size()>0) {
+        return QIcon(); // Возвращается пустая иконка
+    }
+
+    if (actionList.size()>0) {
+        return actionList.at(0)->icon();
+    }
+
+    return QIcon();
 }
 
 

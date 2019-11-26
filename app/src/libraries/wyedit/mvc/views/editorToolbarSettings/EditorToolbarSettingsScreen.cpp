@@ -7,6 +7,9 @@
 #include "main.h"
 #include "views/mainWindow/MainWindow.h"
 #include "libraries/wyedit/EditorConfig.h"
+#include "libraries/wyedit/EditorToolBarAssistant.h"
+#include "views/record/MetaEditor.h"
+
 
 EditorToolbarSettingsScreen::EditorToolbarSettingsScreen(QWidget *parent) : QDialog(parent), needRestart(false), changedCommands(false)
 {
@@ -16,11 +19,11 @@ EditorToolbarSettingsScreen::EditorToolbarSettingsScreen(QWidget *parent) : QDia
     setupSignals();
     assembly();
 
-    // Выбор Toolbar 1
+    // Выбор линии 1 при запуске редактора кнопок
     selectToolbarsListWidget->setCurrentRow(0);
 
-    // Изначальные, в момент заргузки диалога списки команд
-    // Используются для проверки на наличие изменений в расположении команд на понелях и нужде в перезагрузке
+    // Изначальные (в момент заргузки диалога) списки кнопок
+    // Используются для проверки на наличие изменений в расположении кнопок
     loadedAvailableCommandsList = availableCommandsToolbarController->getModel()->getCommandsList();
     loadedToolBar1CommandsList = usedCommandsToolbar1Controller->getModel()->getCommandsList();
     loadedToolBar2CommandsList = usedCommandsToolbar2Controller->getModel()->getCommandsList();
@@ -38,6 +41,7 @@ EditorToolbarSettingsScreen::~EditorToolbarSettingsScreen()
 
 }
 
+
 // Возвращает признак необходимости перезагрузки MyTetra, в зависимости от уровеня сложности вносимых изменений
 bool EditorToolbarSettingsScreen::isNeedRestart() const
 {
@@ -46,23 +50,24 @@ bool EditorToolbarSettingsScreen::isNeedRestart() const
     return needRestart;
 }
 
+
 void EditorToolbarSettingsScreen::setupUI()
 {
-    // Доступные команды панелей инструментов
-    availableToolbarsCommandsLabel = new QLabel(tr("Available Toolbars Commands"), this);
+    // Доступные кнопки панелей инструментов
+    availableToolbarsCommandsLabel = new QLabel(tr("Available toolbars buttons"), this);
 
-    // Виджет выбора панели инструментов
+    // Виджет выбора строки 1 или 2 панели инструментов
     selectToolbarsListWidget = new QListWidget(this);
     selectToolbarsListWidget->setAutoFillBackground(true);
-    selectToolbarsListWidget->addItem(tr("Toolbar 1"));
-    selectToolbarsListWidget->addItem(tr("Toolbar 2"));
+    selectToolbarsListWidget->addItem(tr("Toolbar line 1"));
+    selectToolbarsListWidget->addItem(tr("Toolbar line 2"));
     QFontMetrics metr(selectToolbarsListWidget->font());
     selectToolbarsListWidget->setFixedHeight(metr.height()*3);
 
     // Невидимая надпись над кнопками перемещения, нужна для вертикального выравнивания
     exchangeButtonsLabel=new QLabel(" ");
 
-    // Кнопки для перемещения выбранных кнопок панелей
+    // Кнопки для перемещения выбранных кнопок
     toUsedCommandsPushButton = new QPushButton(QIcon(":/resource/pic/move_right.svg"), "", this);
     toUsedCommandsPushButton->setShortcut(QKeySequence("Alt+Right"));
 
@@ -74,20 +79,21 @@ void EditorToolbarSettingsScreen::setupUI()
 
     usedCommandDownPushButton = new QPushButton(QIcon(":/resource/pic/move_dn.svg"), "", this);
     usedCommandDownPushButton->setShortcut(QKeySequence("Alt+Down"));
+
     // Текущие команды на панели инструментов
-    usedCommandsToolbarLabel = new QLabel(tr("Current Toolbar Commands"), this);
+    usedCommandsToolbarLabel = new QLabel(tr("Current buttons"), this);
 
     // Контроллер списка всех доступных кнопок Редактора Текста
     availableCommandsToolbarController = new EditorToolbarAvailableCommandsController(this);
     availableCommandsToolbarController->setObjectName("editorToolbarAvailableCommandsController");
     availableCommandsToolbarController->init();
 
-    // Контроллер списка кнопок Панели 1 Редактора Текста
+    // Контроллер списка кнопок строки 1 Редактора Текста
     usedCommandsToolbar1Controller = new EditorToolbarUsedCommandsController(GlobalParameters::EditorToolbar::First, this);
     usedCommandsToolbar1Controller->setObjectName("editorToolbarUsedCommands1Controller");
     usedCommandsToolbar1Controller->init();
 
-    // Контроллер списка кнопок Панели 2 Редактора Текста
+    // Контроллер списка кнопок строки 2 Редактора Текста
     usedCommandsToolbar2Controller = new EditorToolbarUsedCommandsController(GlobalParameters::EditorToolbar::Second, this);
     usedCommandsToolbar2Controller->setObjectName("editorToolbarUsedCommands2Controller");
     usedCommandsToolbar2Controller->init();
@@ -145,7 +151,7 @@ void EditorToolbarSettingsScreen::assembly()
     buttonsToMoveLayout->addWidget(infoPushButton);
 
     // Стэк виджетов для видов 2-х панелей инструментов
-    usedCommandsToolbarStackedWidget = new QStackedWidget();
+    usedCommandsToolbarStackedWidget = new QStackedWidget(this);
     usedCommandsToolbarStackedWidget->addWidget(usedCommandsToolbar1Controller->getView());
     usedCommandsToolbarStackedWidget->addWidget(usedCommandsToolbar2Controller->getView());
 
@@ -174,25 +180,28 @@ void EditorToolbarSettingsScreen::assembly()
     setLayout(screenLayout);
 }
 
+
 // Переключение виджетов с кнопками для конкретной панели инструментов редактора текста
 void EditorToolbarSettingsScreen::onCheckViewToolbarWidget()
 {
     usedCommandsToolbarStackedWidget->setCurrentIndex(selectToolbarsListWidget->currentRow());
 
     QString text = QString("%1 %2")
-            .arg(tr("Commands for"))
+            .arg(tr("Buttons for"))
             .arg(selectToolbarsListWidget->item(selectToolbarsListWidget->currentRow())->text());
 
     usedCommandsToolbarLabel->setText(text);
 }
 
-// Перемещение выбранной команды из модели всех доступных команд в модель команд рабочей панели
+
+// Перемещение выбранного инструмента из модели всех доступных инструментов
+// в модель инструментов рабочей панели
 void EditorToolbarSettingsScreen::onMoveAvailableCommandToUsedCommands()
 {
-    // Получение индекса выбранной команды из списка всех доступных комманд
+    // Получение индекса выбранного инструмента из списка всех доступных инструментов
     QModelIndex selectedAvailableIndex = availableCommandsToolbarController->getSelectionModel()->currentIndex();
 
-    // Код команды
+    // Имя инструмента
     QString command = selectedAvailableIndex.row() == 0
             ? "separator" // Для <SEPARATOR> меняем название
             : selectedAvailableIndex.data(Qt::DisplayRole).toString();
@@ -201,6 +210,7 @@ void EditorToolbarSettingsScreen::onMoveAvailableCommandToUsedCommands()
     EditorToolbarUsedCommandsController *controller = getCurrentEditorToolbarUsedCommandsController();
 
     // Индекс выбранного элемента списка команд панели инструментов
+    // todo: Сравнение индексов - не лучшая идея. Надо переделать на сравнение наименований
     QModelIndex toolbarSelectedIndex = controller->getSelectionModel()->currentIndex();
     int row = toolbarSelectedIndex.row();
     int newRow = 0; // Если элемент в списке панели инструментов не выбран, то вставляем в начало списка
@@ -235,8 +245,10 @@ void EditorToolbarSettingsScreen::onMoveAvailableCommandToUsedCommands()
     }
 
     // Создание нового item для добавления в список выбранной панели инструментов
+    // Владение данным объектом передается модели при вызове метода insertRow()
     QStandardItem *newItem = new QStandardItem();
-    newItem->setData(command, Qt::DisplayRole);
+    newItem->setData(command, Qt::DisplayRole); // Копирование названия
+    newItem->setIcon( qvariant_cast<QIcon>( selectedAvailableIndex.data(Qt::DecorationRole)) ); // Копирование иконки
 
     // Добавление новой команды в модель
     controller->getModel()->insertRow(newRow, newItem);
@@ -267,6 +279,7 @@ void EditorToolbarSettingsScreen::onMoveAvailableCommandToUsedCommands()
         availableCommandsToolbarController->getModel()->removeRow(selectedAvailableIndex.row());
     }
 }
+
 
 // Перемещение выбранной команды из модели команд рабочей панели в модель всех доступных команд
 void EditorToolbarSettingsScreen::onMoveUsedCommandToAvailableCommands()
@@ -301,7 +314,8 @@ void EditorToolbarSettingsScreen::onMoveUsedCommandToAvailableCommands()
     } else {
         // Создание нового item для добавления в модель выбранной панели инструментов
         QStandardItem *newItem = new QStandardItem();
-        newItem->setData(command, Qt::DisplayRole);
+        newItem->setData(command, Qt::DisplayRole); // Копирование наименования
+        newItem->setIcon( qvariant_cast<QIcon>( selectedIndex.data(Qt::DecorationRole)) ); // Копирование иконки
 
         // Добавление нового элемента в модель
         availableCommandsToolbarController->getModel()->insertRow(0, newItem);
@@ -324,6 +338,7 @@ void EditorToolbarSettingsScreen::onMoveUsedCommandToAvailableCommands()
     }
 }
 
+
 // Перемещение выбранной команды вверх в моделе команд рабочей панели инструментов
 void EditorToolbarSettingsScreen::onMoveSelectedCommandUp()
 {
@@ -334,6 +349,7 @@ void EditorToolbarSettingsScreen::onMoveSelectedCommandUp()
     controller->moveCommandUpDown(EditorToolbarUsedCommandsController::CommandMove::Up);
 }
 
+
 // Перемещение выбранной команды вниз в моделе команд рабочей панели инструментов
 void EditorToolbarSettingsScreen::onMoveSelectedCommandDown()
 {
@@ -343,6 +359,7 @@ void EditorToolbarSettingsScreen::onMoveSelectedCommandDown()
     // Перемещение выделенной команды вниз
     controller->moveCommandUpDown(EditorToolbarUsedCommandsController::CommandMove::Down);
 }
+
 
 // Отображение информации-подсказки
 void EditorToolbarSettingsScreen::onInfoClick()
@@ -367,6 +384,7 @@ void EditorToolbarSettingsScreen::onInfoClick()
     msgBox->exec();
 }
 
+
 // Сохранение результата распределения команд по панелям инструментов
 void EditorToolbarSettingsScreen::applyChanges()
 {
@@ -379,20 +397,23 @@ void EditorToolbarSettingsScreen::applyChanges()
     if (loadedAvailableCommandsList!=availableCommandsList ||
         loadedToolBar1CommandsList!=toolBar1CommandsList ||
         loadedToolBar2CommandsList!=toolBar2CommandsList ) {
-        // Изменения были сделаны. Обработка изменений
-        if (toolBar1CommandsList.indexOf("settings")==-1 && toolBar2CommandsList.indexOf("settings")==-1) {
-            // Команду Настройки (settings) оставляем, иначе невозможно будет настраивать редактор
+
+        // Проверка корректности изменений
+        if (toolBar1CommandsList.indexOf("settings")==-1) {
+
+            // Команда "Настройки" должна обязательно быть на первой линии панели инструментов
             QMessageBox msbox;
-            msbox.setText(tr("The Settings command <b>%1</b> must be on the ToolBar 1 or ToolBar 2!").arg("settings"));
+            msbox.setText(tr("The Settings command <b>%1</b> must be on the toolbar line 1!").arg("settings"));
             msbox.setIcon(QMessageBox::Icon::Warning);
             msbox.setStandardButtons(QMessageBox::Ok);
             msbox.exec();
 
-            needRestart = false; // изменения можно делать на лету, перезагрузка MyTetra не нужна
+            needRestart = false;
         } else {
-            // Редактор конфигурации
+            // Конфигурация текстового редактора
             EditorConfig *editorConfig = getCurrentEditorToolbarUsedCommandsController()->getModel()->getEditorConfig();
 
+            // Сохранение конфигурации
             editorConfig->set_tools_line_1(toolBar1CommandsList);
             editorConfig->set_tools_line_2(toolBar2CommandsList);
             editorConfig->sync();
@@ -401,14 +422,16 @@ void EditorToolbarSettingsScreen::applyChanges()
             close();
         }
     } else {
-        needRestart = false; // изменения можно делать на лету, перезагрузка MyTetra не нужна
+        needRestart = false; // Изменения можно делать на лету, перезагрузка MyTetra не нужна
         close();
     }
 }
 
-// Контроллер для работы с моделью панели используемых команд, в зависимости от выбранной панели
+
+// Контроллер для работы с моделью панели используемых команд,
+// в зависимости от выбранной строки панели
 EditorToolbarUsedCommandsController *EditorToolbarSettingsScreen::getCurrentEditorToolbarUsedCommandsController()
 {
-    return usedCommandsToolbarStackedWidget->currentIndex() == 0
-            ? usedCommandsToolbar1Controller : usedCommandsToolbar2Controller;
+    return usedCommandsToolbarStackedWidget->currentIndex() == 0 ?
+           usedCommandsToolbar1Controller : usedCommandsToolbar2Controller;
 }
